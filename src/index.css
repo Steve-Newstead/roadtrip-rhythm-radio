@@ -101,6 +101,24 @@
   }
 }
 
+@layer utilities {
+  .delay-200 {
+    animation-delay: 200ms;
+  }
+  
+  .delay-400 {
+    animation-delay: 400ms;
+  }
+  
+  .delay-600 {
+    animation-delay: 600ms;
+  }
+  
+  .delay-800 {
+    animation-delay: 800ms;
+  }
+}
+
 @layer components {
   .music-wave {
     @apply relative flex items-end justify-center h-6 w-10;
@@ -111,18 +129,18 @@
   }
   
   .music-wave span:nth-child(2) {
-    @apply h-4 bg-festival-blue animation-delay-200;
+    @apply h-4 bg-festival-blue delay-200;
   }
   
   .music-wave span:nth-child(3) {
-    @apply h-5 bg-festival-turquoise animation-delay-400;
+    @apply h-5 bg-festival-turquoise delay-400;
   }
   
   .music-wave span:nth-child(4) {
-    @apply h-4 bg-festival-pink animation-delay-600;
+    @apply h-4 bg-festival-pink delay-600;
   }
   
   .music-wave span:nth-child(5) {
-    @apply h-3 bg-festival-orange animation-delay-800;
+    @apply h-3 bg-festival-orange delay-800;
   }
 }
