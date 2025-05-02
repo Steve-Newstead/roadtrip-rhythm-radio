@@ -1,10 +1,9 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import ArtistCard from "./ArtistCard";
-import { Disc3, Headphones, Music, Playlist, Shuffle, Sparkles } from "lucide-react";
+import { Disc3, Headphones, ListMusic, Music, Shuffle, Sparkles } from "lucide-react";
 
 // Mock festival artists data - this would come from a real API in a production app
 const FESTIVAL_ARTISTS = {
@@ -182,7 +181,7 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
             <>Playlist Created!</>
           ) : selectedArtists.length === 0 ? (
             <>
-              <Playlist size={16} />
+              <ListMusic size={16} />
               <span>Select Artists First</span>
             </>
           ) : (
@@ -201,7 +200,7 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
             Artists ({festivalArtists.length})
           </TabsTrigger>
           <TabsTrigger value="selection" className="rounded-full data-[state=active]:bg-white">
-            <Playlist size={16} className="h-4 w-4 mr-2" />
+            <ListMusic size={16} className="h-4 w-4 mr-2" />
             Selected ({selectedArtists.length})
           </TabsTrigger>
           <TabsTrigger value="options" className="rounded-full data-[state=active]:bg-white">
