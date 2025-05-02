@@ -1,9 +1,13 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import ArtistCard from "./ArtistCard";
 import { Disc3, Headphones, ListMusic, Music, Shuffle, Sparkles } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { spotifyApi } from "@/utils/spotify";
+import { useNavigate } from "react-router-dom";
 
 // Mock festival artists data - this would come from a real API in a production app
 const FESTIVAL_ARTISTS = {
@@ -117,10 +121,20 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
   const [playlistCreated, setPlaylistCreated] = useState(false);
   const [selectedArtists, setSelectedArtists] = useState<string[]>([]);
+  const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user, spotifyAuth } = useAuth();
+  const navigate = useNavigate();
   
   // Get festival artists based on selected festival
   const festivalArtists = festival && FESTIVAL_ARTISTS[festival as keyof typeof FESTIVAL_ARTISTS] || [];
+  
+  // Set the Spotify access token when it changes
+  useEffect(() => {
+    if (spotifyAuth.accessToken) {
+      spotifyApi.setAccessToken(spotifyAuth.accessToken);
+    }
+  }, [spotifyAuth.accessToken]);
   
   const toggleArtistSelection = (artistId: string) => {
     setSelectedArtists(prev => {
@@ -132,18 +146,71 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
     });
   };
 
-  const createSpotifyPlaylist = () => {
-    setIsCreatingPlaylist(true);
+  const createSpotifyPlaylist = async () => {
+    if (!user || !spotifyAuth.accessToken) {
+      navigate("/auth");
+      return;
+    }
     
-    // Simulate API call to Spotify
-    setTimeout(() => {
-      setIsCreatingPlaylist(false);
+    try {
+      setIsCreatingPlaylist(true);
+      
+      // Get user profile
+      const userProfile = await spotifyApi.getUserProfile();
+      
+      // Create a new playlist
+      const playlistName = `Road Trip to ${festival} from ${startLocation}`;
+      const playlistDescription = `A playlist for my road trip to ${festival} from ${startLocation} to ${endLocation}`;
+      
+      const playlist = await spotifyApi.createPlaylist(
+        userProfile.id,
+        playlistName,
+        playlistDescription,
+        true // public playlist
+      );
+      
+      // Get top tracks for each selected artist and add to playlist
+      const selectedArtistData = festivalArtists.filter(artist => selectedArtists.includes(artist.id));
+      
+      // Gather tracks from selected artists
+      let trackUris: string[] = [];
+      
+      for (const artist of selectedArtistData) {
+        if (artist.spotifyId) {
+          try {
+            const topTracksResponse = await spotifyApi.getArtistTopTracks(artist.spotifyId);
+            const artistTrackUris = topTracksResponse.tracks.slice(0, 3).map((track: any) => track.uri);
+            trackUris.push(...artistTrackUris);
+          } catch (error) {
+            console.error(`Error getting top tracks for ${artist.name}:`, error);
+          }
+        }
+      }
+      
+      // Add tracks to playlist
+      if (trackUris.length > 0) {
+        await spotifyApi.addTracksToPlaylist(playlist.id, trackUris);
+      }
+      
+      // Save playlist URL
+      setPlaylistUrl(playlist.external_urls.spotify);
       setPlaylistCreated(true);
+      
       toast({
         title: "Playlist created!",
         description: "Your road trip playlist is ready on Spotify",
       });
-    }, 2000);
+      
+    } catch (error) {
+      console.error("Error creating playlist:", error);
+      toast({
+        title: "Error creating playlist",
+        description: error.message || "Failed to create Spotify playlist",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingPlaylist(false);
+    }
   };
   
   if (!startLocation || !endLocation || !festival) {
@@ -162,6 +229,8 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
     );
   }
   
+  const needsAuthentication = !user || !spotifyAuth.accessToken;
+  
   return (
     <div className="w-full mt-6">
       <div className="flex items-center justify-between mb-6">
@@ -169,28 +238,43 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
           <h2 className="text-3xl font-bold tracking-tight">Your Festival Playlist</h2>
           <p className="text-muted-foreground">Create a playlist with artists playing at {festival}</p>
         </div>
-        <Button
-          onClick={createSpotifyPlaylist}
-          disabled={isCreatingPlaylist || playlistCreated || selectedArtists.length === 0}
-          className="rounded-full bg-[#1DB954] hover:bg-[#1DB954]/90 text-white gap-2"
-          size="lg"
-        >
-          {isCreatingPlaylist ? (
-            <>Processing...</>
-          ) : playlistCreated ? (
-            <>Playlist Created!</>
-          ) : selectedArtists.length === 0 ? (
-            <>
-              <ListMusic size={16} />
-              <span>Select Artists First</span>
-            </>
-          ) : (
-            <>
-              <Sparkles size={16} />
-              <span>Create Spotify Playlist</span>
-            </>
-          )}
-        </Button>
+        
+        {playlistCreated && playlistUrl ? (
+          <Button
+            onClick={() => window.open(playlistUrl, '_blank')}
+            className="rounded-full bg-[#1DB954] hover:bg-[#1DB954]/90 text-white gap-2"
+            size="lg"
+          >
+            <Music size={16} />
+            <span>Open in Spotify</span>
+          </Button>
+        ) : (
+          <Button
+            onClick={needsAuthentication ? () => navigate("/auth") : createSpotifyPlaylist}
+            disabled={isCreatingPlaylist || (!needsAuthentication && selectedArtists.length === 0)}
+            className="rounded-full bg-[#1DB954] hover:bg-[#1DB954]/90 text-white gap-2"
+            size="lg"
+          >
+            {isCreatingPlaylist ? (
+              <>Processing...</>
+            ) : needsAuthentication ? (
+              <>
+                <Music size={16} />
+                <span>Connect to Spotify</span>
+              </>
+            ) : selectedArtists.length === 0 ? (
+              <>
+                <ListMusic size={16} />
+                <span>Select Artists First</span>
+              </>
+            ) : (
+              <>
+                <Sparkles size={16} />
+                <span>Create Spotify Playlist</span>
+              </>
+            )}
+          </Button>
+        )}
       </div>
       
       <Tabs defaultValue="artists" className="w-full">
