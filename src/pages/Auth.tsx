@@ -1,37 +1,23 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Headphones, Loader2, Music } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [session, setSession] = useState(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
-        setSession(currentSession);
-        if (currentSession) {
-          navigate("/");
-        }
-      }
-    );
-
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-      if (currentSession) {
-        navigate("/");
-      }
-    });
-
-    return () => subscription?.unsubscribe();
-  }, [navigate]);
+    // If user is already authenticated, redirect to home
+    if (user) {
+      navigate("/");
+    }
+  }, [user, navigate]);
 
   const handleSpotifyLogin = async () => {
     try {
@@ -40,7 +26,7 @@ const Auth = () => {
         provider: 'spotify',
         options: {
           scopes: 'user-read-email playlist-modify-public playlist-modify-private',
-          redirectTo: window.location.origin + '/auth'
+          redirectTo: window.location.origin
         }
       });
       
@@ -57,6 +43,18 @@ const Auth = () => {
       setIsLoading(false);
     }
   };
+
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-festival-purple" />
+          <p className="text-muted-foreground">Connecting to Spotify...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

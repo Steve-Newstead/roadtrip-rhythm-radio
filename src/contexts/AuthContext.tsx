@@ -1,7 +1,7 @@
-
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
+import { spotifyApi } from "@/utils/spotify";
 
 type AuthContextType = {
   session: Session | null;
@@ -35,8 +35,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   });
 
   useEffect(() => {
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      if (currentSession) {
+        setSession(currentSession);
+        setUser(currentSession.user);
+        
+        if (currentSession.provider_token) {
+          setSpotifyAuth({
+            accessToken: currentSession.provider_token,
+            refreshToken: currentSession.provider_refresh_token || null,
+          });
+          spotifyApi.setAccessToken(currentSession.provider_token);
+        }
+      }
+      setIsLoading(false);
+    });
+
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
+      async (event, currentSession) => {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         
@@ -45,37 +63,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             accessToken: currentSession.provider_token,
             refreshToken: currentSession.provider_refresh_token || null,
           });
+          spotifyApi.setAccessToken(currentSession.provider_token);
         } else {
           setSpotifyAuth({
             accessToken: null,
             refreshToken: null,
           });
+          spotifyApi.setAccessToken(null);
         }
         
         setIsLoading(false);
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      
-      if (currentSession?.provider_token) {
-        setSpotifyAuth({
-          accessToken: currentSession.provider_token,
-          refreshToken: currentSession.provider_refresh_token || null,
-        });
-      }
-      
-      setIsLoading(false);
-    });
-
-    return () => subscription?.unsubscribe();
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+      setSpotifyAuth({
+        accessToken: null,
+        refreshToken: null,
+      });
+      spotifyApi.setAccessToken(null);
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
   };
 
   const value = {
