@@ -2,8 +2,7 @@
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { BadgePlus, Play } from "lucide-react";
-import { Badge } from "./ui/badge";
+import { CheckCircle2, Music, Play, Plus } from "lucide-react";
 
 interface ArtistCardProps {
   artist: {
@@ -12,10 +11,13 @@ interface ArtistCardProps {
     location: string;
     imageUrl?: string;
     topTrack?: string;
+    spotifyId?: string;
   };
+  isSelected?: boolean;
+  onToggle?: () => void;
 }
 
-const ArtistCard = ({ artist }: ArtistCardProps) => {
+const ArtistCard = ({ artist, isSelected = false, onToggle }: ArtistCardProps) => {
   const { name, location, imageUrl, topTrack } = artist;
   
   const initials = name
@@ -49,6 +51,11 @@ const ArtistCard = ({ artist }: ArtistCardProps) => {
         >
           <Play className="h-4 w-4 fill-current" />
         </Button>
+        {isSelected && (
+          <div className="absolute top-3 right-3 bg-[#1DB954] text-white rounded-full p-1">
+            <CheckCircle2 size={20} />
+          </div>
+        )}
       </div>
       <div className="album-card-content flex items-center justify-between">
         {topTrack && (
@@ -57,9 +64,23 @@ const ArtistCard = ({ artist }: ArtistCardProps) => {
             <span className="font-medium truncate max-w-[180px]">{topTrack}</span>
           </div>
         )}
-        <Button variant="ghost" size="sm" className="rounded-full">
-          <BadgePlus className="h-4 w-4 mr-1" />
-          <span>Add</span>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="rounded-full"
+          onClick={onToggle}
+        >
+          {isSelected ? (
+            <>
+              <CheckCircle2 className="h-4 w-4 mr-1 text-[#1DB954]" />
+              <span>Added</span>
+            </>
+          ) : (
+            <>
+              <Plus className="h-4 w-4 mr-1" />
+              <span>Add</span>
+            </>
+          )}
         </Button>
       </div>
     </Card>

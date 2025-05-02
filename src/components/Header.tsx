@@ -1,5 +1,5 @@
 
-import { Route } from "lucide-react";
+import { Headphones } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 
@@ -10,7 +10,7 @@ const Header = () => {
     <header className="border-b bg-white dark:bg-slate-900 sticky top-0 z-10">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-2" onClick={() => navigate("/")} role="button">
-          <Route size={24} className="text-festival-pink" />
+          <Headphones size={24} className="text-festival-pink" />
           <div className="flex flex-col">
             <h1 className="text-lg font-bold leading-none tracking-tight">Roadtrip Rhythm</h1>
             <span className="text-xs text-muted-foreground">Festival Playlist Creator</span>
@@ -26,7 +26,7 @@ const Header = () => {
         
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" className="rounded-full">How it works</Button>
-          <Button size="sm" className="rounded-full bg-festival-pink hover:bg-festival-pink/90">Create Playlist</Button>
+          <Button size="sm" className="rounded-full bg-[#1DB954] hover:bg-[#1DB954]/90 text-white">Create Playlist</Button>
         </div>
       </div>
     </header>

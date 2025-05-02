@@ -86,7 +86,6 @@ const Index = () => {
               startLocation={route?.startLocation} 
               endLocation={route?.endLocation}
               artistLocations={artistLocations || undefined}
-              className="rounded-3xl overflow-hidden border-0 shadow-md"
             />
             
             <PlaylistGenerator 
