@@ -1,8 +1,9 @@
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Navigation } from "lucide-react";
+import { BadgePlus, Play } from "lucide-react";
+import { Badge } from "./ui/badge";
 
 interface ArtistCardProps {
   artist: {
@@ -25,32 +26,42 @@ const ArtistCard = ({ artist }: ArtistCardProps) => {
     .slice(0, 2);
 
   return (
-    <Card className="overflow-hidden transition-all hover:shadow-md">
-      <CardContent className="p-0">
-        <div className="flex items-center p-4">
-          <Avatar className="h-14 w-14 mr-4 border">
-            <AvatarImage src={imageUrl} alt={name} />
-            <AvatarFallback className="bg-festival-purple text-white">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
-            <h3 className="font-semibold text-base">{name}</h3>
-            <div className="flex items-center text-xs text-muted-foreground mb-1">
-              <Navigation size={12} className="mr-1" />
-              <span>{location}</span>
-            </div>
-            {topTrack && (
-              <p className="text-xs">
-                <span className="text-muted-foreground">Top track:</span> {topTrack}
-              </p>
-            )}
-          </div>
-          <Button variant="outline" size="sm" className="shrink-0">
-            Play
-          </Button>
+    <Card className="album-card border-0 shadow-md group">
+      <div className="relative aspect-square bg-gradient-to-br from-muted to-muted/30 overflow-hidden">
+        <Avatar className="h-full w-full rounded-none">
+          <AvatarImage 
+            src={imageUrl} 
+            alt={name} 
+            className="object-cover h-full w-full transition-transform group-hover:scale-110"
+          />
+          <AvatarFallback className="bg-gradient-to-br from-festival-purple to-festival-blue text-white text-4xl h-full w-full rounded-none">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        <div className="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/70 to-transparent text-white">
+          <h3 className="font-bold text-lg tracking-tight">{name}</h3>
+          <p className="text-sm opacity-90">{location}</p>
         </div>
-      </CardContent>
+        <Button 
+          size="icon" 
+          variant="secondary" 
+          className="absolute right-3 bottom-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity bg-white text-black hover:bg-white/90"
+        >
+          <Play className="h-4 w-4 fill-current" />
+        </Button>
+      </div>
+      <div className="album-card-content flex items-center justify-between">
+        {topTrack && (
+          <div className="flex flex-col">
+            <span className="text-xs text-muted-foreground">Top track</span>
+            <span className="font-medium truncate max-w-[180px]">{topTrack}</span>
+          </div>
+        )}
+        <Button variant="ghost" size="sm" className="rounded-full">
+          <BadgePlus className="h-4 w-4 mr-1" />
+          <span>Add</span>
+        </Button>
+      </div>
     </Card>
   );
 };

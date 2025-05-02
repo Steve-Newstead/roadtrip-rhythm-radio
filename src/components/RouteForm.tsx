@@ -2,10 +2,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, MapPin, Music } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "./ui/badge";
 
 const FESTIVALS = [
   { id: 'glastonbury', name: 'Glastonbury Festival', location: 'Pilton, UK' },
@@ -61,24 +62,26 @@ const RouteForm = ({ onSubmit }: RouteFormProps) => {
   };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Create Your Festival Journey</CardTitle>
-        <CardDescription>
-          Generate a playlist based on artists from locations along your route to the festival
-        </CardDescription>
-      </CardHeader>
+    <Card className="border-0 shadow-md overflow-hidden">
+      <div className="bg-gradient-to-r from-festival-purple to-festival-blue p-4">
+        <h2 className="text-white text-xl font-bold">Create Your Festival Journey</h2>
+        <p className="text-white/80 text-sm">
+          Get the perfect playlist for your road trip
+        </p>
+      </div>
       <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5 p-5">
           <div className="space-y-2">
-            <label htmlFor="start" className="text-sm font-medium">
-              Starting Location
+            <label htmlFor="start" className="text-sm font-medium flex items-center gap-2">
+              <MapPin size={16} className="text-festival-pink" />
+              <span>Starting Location</span>
             </label>
             <Input
               id="start"
               placeholder="Enter your starting point"
               value={startLocation}
               onChange={(e) => setStartLocation(e.target.value)}
+              className="rounded-full border-2 focus-visible:border-festival-purple focus-visible:ring-festival-purple"
             />
           </div>
           
@@ -89,28 +92,34 @@ const RouteForm = ({ onSubmit }: RouteFormProps) => {
           </div>
           
           <div className="space-y-2">
-            <label htmlFor="festival" className="text-sm font-medium">
-              Select Festival
+            <label htmlFor="festival" className="text-sm font-medium flex items-center gap-2">
+              <Music size={16} className="text-festival-blue" />
+              <span>Select Festival</span>
             </label>
             <Select onValueChange={setFestival} value={festival}>
-              <SelectTrigger>
+              <SelectTrigger className="rounded-full border-2 focus:border-festival-purple focus:ring-festival-purple">
                 <SelectValue placeholder="Choose a festival" />
               </SelectTrigger>
               <SelectContent>
                 {FESTIVALS.map((fest) => (
-                  <SelectItem key={fest.id} value={fest.id}>
-                    {fest.name} - {fest.location}
+                  <SelectItem key={fest.id} value={fest.id} className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span>{fest.name}</span>
+                      <span className="text-xs text-muted-foreground">{fest.location}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-        </CardContent>
-        <CardFooter>
-          <Button type="submit" className="w-full">
+          
+          <Button 
+            type="submit" 
+            className="w-full rounded-full bg-gradient-to-r from-festival-pink to-festival-purple hover:opacity-90 transition-opacity"
+          >
             Generate Festival Playlist
           </Button>
-        </CardFooter>
+        </CardContent>
       </form>
     </Card>
   );
