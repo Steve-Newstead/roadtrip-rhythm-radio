@@ -92,6 +92,7 @@ class SpotifyAPI {
 
     try {
       const result = await this.fetchWithAuth(`/search?${params}`);
+      console.log("Search result url:", `/search?${params}`);
       return result.artists.items;
     } catch (error) {
       console.error(`Error searching for artist ${query}:`, error);
