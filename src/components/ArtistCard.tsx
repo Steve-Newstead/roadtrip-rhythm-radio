@@ -2,23 +2,18 @@
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Music, Play, Plus } from "lucide-react";
+import { CheckCircle2, Disc3, ExternalLink, Music, Play, Plus } from "lucide-react";
+import { ArtistWithDetails } from "@/utils/spotify";
+import { Badge } from "./ui/badge";
 
 interface ArtistCardProps {
-  artist: {
-    id: string;
-    name: string;
-    location: string;
-    imageUrl?: string;
-    topTrack?: string;
-    spotifyId?: string;
-  };
+  artist: ArtistWithDetails;
   isSelected?: boolean;
   onToggle?: () => void;
 }
 
 const ArtistCard = ({ artist, isSelected = false, onToggle }: ArtistCardProps) => {
-  const { name, location, imageUrl, topTrack } = artist;
+  const { name, imageUrl, topTrack, genres } = artist;
   
   const initials = name
     .split(' ')
@@ -27,12 +22,19 @@ const ArtistCard = ({ artist, isSelected = false, onToggle }: ArtistCardProps) =
     .toUpperCase()
     .slice(0, 2);
 
+  const openSpotifyLink = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (artist.spotifyId) {
+      window.open(`https://open.spotify.com/artist/${artist.spotifyId}`, '_blank');
+    }
+  };
+
   return (
-    <Card className="album-card border-0 shadow-md group">
+    <Card className="album-card border-0 shadow-md group cursor-pointer" onClick={onToggle}>
       <div className="relative aspect-square bg-gradient-to-br from-muted to-muted/30 overflow-hidden">
         <Avatar className="h-full w-full rounded-none">
           <AvatarImage 
-            src={imageUrl} 
+            src={imageUrl || undefined} 
             alt={name} 
             className="object-cover h-full w-full transition-transform group-hover:scale-110"
           />
@@ -42,27 +44,42 @@ const ArtistCard = ({ artist, isSelected = false, onToggle }: ArtistCardProps) =
         </Avatar>
         <div className="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/70 to-transparent text-white">
           <h3 className="font-bold text-lg tracking-tight">{name}</h3>
-          <p className="text-sm opacity-90">{location}</p>
+          {genres && genres.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {genres.slice(0, 2).map(genre => (
+                <Badge key={genre} variant="outline" className="text-xs bg-black/30 border-none text-white">
+                  {genre}
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
-        <Button 
-          size="icon" 
-          variant="secondary" 
-          className="absolute right-3 bottom-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity bg-white text-black hover:bg-white/90"
-        >
-          <Play className="h-4 w-4 fill-current" />
-        </Button>
+        
+        {artist.spotifyId && (
+          <Button 
+            size="icon" 
+            variant="secondary" 
+            className="absolute right-3 bottom-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity bg-white text-black hover:bg-white/90"
+            onClick={openSpotifyLink}
+          >
+            <ExternalLink className="h-4 w-4" />
+          </Button>
+        )}
+        
         {isSelected && (
           <div className="absolute top-3 right-3 bg-[#1DB954] text-white rounded-full p-1">
             <CheckCircle2 size={20} />
           </div>
         )}
       </div>
-      <div className="album-card-content flex items-center justify-between">
-        {topTrack && (
-          <div className="flex flex-col">
-            <span className="text-xs text-muted-foreground">Top track</span>
+      <div className="p-3 flex items-center justify-between">
+        {topTrack ? (
+          <div className="flex items-center gap-2">
+            <Disc3 className="h-4 w-4 text-muted-foreground" />
             <span className="font-medium truncate max-w-[180px]">{topTrack}</span>
           </div>
+        ) : (
+          <span className="text-sm text-muted-foreground">No top track found</span>
         )}
         <Button 
           variant="ghost" 
