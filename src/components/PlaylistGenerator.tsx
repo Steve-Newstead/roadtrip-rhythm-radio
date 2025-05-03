@@ -36,6 +36,7 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
   useEffect(() => {
     if (spotifyAuth.accessToken) {
       spotifyApi.setAccessToken(spotifyAuth.accessToken);
+      console.log('steve check' + spotifyAuth.accessToken);
     }
   }, [spotifyAuth.accessToken]);
   
