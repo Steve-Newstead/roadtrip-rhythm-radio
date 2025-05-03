@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import ArtistCard from "./ArtistCard";
 import { Disc3, Headphones, ListMusic, Loader2, Music, Shuffle, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -76,10 +75,8 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
         setArtistsWithDetails(detailedArtists);
       } catch (error) {
         console.error("Error fetching artist details:", error);
-        toast({
-          title: "Error loading artists",
-          description: "Could not load artist information from Spotify",
-          variant: "destructive",
+        toast.error("Error loading artists", {
+          description: "Could not load artist information from Spotify"
         });
       } finally {
         setIsLoadingArtists(false);
@@ -114,10 +111,8 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
     }
     
     if (!festival || !startLocation) {
-      toast({
-        title: "Missing information",
-        description: "Please select a festival and starting point",
-        variant: "destructive",
+      toast.error("Missing information", {
+        description: "Please select a festival and starting point"
       });
       return;
     }
@@ -171,17 +166,14 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
       setPlaylistUrl(playlist.external_urls.spotify);
       setPlaylistCreated(true);
       
-      toast({
-        title: "Playlist created!",
-        description: "Your road trip playlist is ready on Spotify",
+      toast.success("Playlist created!", {
+        description: "Your road trip playlist is ready on Spotify"
       });
       
     } catch (error) {
       console.error("Error creating playlist:", error);
-      toast({
-        title: "Error creating playlist",
-        description: error.message || "Failed to create Spotify playlist",
-        variant: "destructive",
+      toast.error("Error creating playlist", {
+        description: error.message || "Failed to create Spotify playlist"
       });
     } finally {
       setIsCreatingPlaylist(false);

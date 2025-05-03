@@ -1,5 +1,5 @@
 
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 
 export interface SpotifyArtist {
   id: string;
@@ -106,15 +106,7 @@ class SpotifyAPI {
     // If no token is available, return placeholder details for each artist
     if (!this.accessToken) {
       artistNames.forEach(name => {
-        artistDetailsMap.set(name, {
-          name,
-          id: null,
-          imageUrl: null,
-          spotifyId: null,
-          topTrack: null,
-          popularity: null,
-          genres: []
-        });
+        artistDetailsMap.set(name, this.createPlaceholderArtist(name));
       });
       return artistDetailsMap;
     }
@@ -122,7 +114,7 @@ class SpotifyAPI {
     try {
       // First, search for these artists to get their IDs (we need to do this in batches)
       const searchBatchSize = 5;
-      const searchResults = new Map<string, string>();  // Map of artist name to Spotify ID
+      const searchResults = new Map<string, { id: string, name: string }>();  // Map of artist name to Spotify ID and actual Spotify name
       
       for (let i = 0; i < artistNames.length; i += searchBatchSize) {
         const batch = artistNames.slice(i, i + searchBatchSize);
@@ -130,7 +122,8 @@ class SpotifyAPI {
           this.searchArtists(name)
             .then(artists => {
               if (artists && artists.length > 0) {
-                searchResults.set(name, artists[0].id);
+                // Store both the ID and the actual name from Spotify (might be slightly different from our input)
+                searchResults.set(name, { id: artists[0].id, name: artists[0].name });
               }
             })
             .catch(error => {
@@ -147,7 +140,9 @@ class SpotifyAPI {
       }
       
       // Collect all found Spotify IDs
-      const foundSpotifyIds = Array.from(searchResults.values()).filter(Boolean);
+      const foundSpotifyIds = Array.from(searchResults.values())
+        .map(result => result.id)
+        .filter(Boolean);
       
       // Now get all artist details in batches of 50 (Spotify API limit)
       const spotifyArtistDetails = new Map<string, SpotifyArtist>();
@@ -201,33 +196,33 @@ class SpotifyAPI {
         }
       }
       
-      // Now build the final artist details map
-      artistNames.forEach(name => {
-        const spotifyId = searchResults.get(name);
-        const artist = spotifyId ? spotifyArtistDetails.get(spotifyId) : null;
-        const topTrack = spotifyId ? topTracksMap.get(spotifyId) : null;
+      // Now build the final artist details map - critically, use the original artist name as the key
+      // but incorporate all the Spotify data correctly
+      artistNames.forEach(originalName => {
+        const searchResult = searchResults.get(originalName);
         
-        if (artist) {
-          artistDetailsMap.set(name, {
-            name,
-            id: artist.id,
-            imageUrl: artist.images && artist.images.length > 0 ? artist.images[0].url : null,
-            spotifyId: artist.id,
-            topTrack,
-            popularity: artist.popularity || null,
-            genres: artist.genres || []
-          });
+        if (searchResult) {
+          const { id, name: spotifyName } = searchResult;
+          const artist = spotifyArtistDetails.get(id);
+          const topTrack = topTracksMap.get(id);
+          
+          if (artist) {
+            artistDetailsMap.set(originalName, {
+              name: originalName, // Use the original name from our data
+              id: artist.id,
+              imageUrl: artist.images && artist.images.length > 0 ? artist.images[0].url : null,
+              spotifyId: artist.id,
+              topTrack,
+              popularity: artist.popularity || null,
+              genres: artist.genres || []
+            });
+          } else {
+            // For artists we found in search but couldn't get details
+            artistDetailsMap.set(originalName, this.createPlaceholderArtist(originalName));
+          }
         } else {
-          // For artists we couldn't find, include a placeholder
-          artistDetailsMap.set(name, {
-            name,
-            id: null,
-            imageUrl: null,
-            spotifyId: null,
-            topTrack: null,
-            popularity: null,
-            genres: []
-          });
+          // For artists we couldn't find at all
+          artistDetailsMap.set(originalName, this.createPlaceholderArtist(originalName));
         }
       });
       
@@ -236,18 +231,23 @@ class SpotifyAPI {
       console.error("Error in getMultipleArtistsByName:", error);
       // Return placeholders for all artists on error
       artistNames.forEach(name => {
-        artistDetailsMap.set(name, {
-          name,
-          id: null,
-          imageUrl: null,
-          spotifyId: null,
-          topTrack: null,
-          popularity: null,
-          genres: []
-        });
+        artistDetailsMap.set(name, this.createPlaceholderArtist(name));
       });
       return artistDetailsMap;
     }
+  }
+
+  // Helper method to create a placeholder artist
+  private createPlaceholderArtist(name: string): ArtistWithDetails {
+    return {
+      name,
+      id: null,
+      imageUrl: null,
+      spotifyId: null,
+      topTrack: null,
+      popularity: null,
+      genres: []
+    };
   }
 
   async getArtistDetails(artistName: string): Promise<ArtistWithDetails | null> {
@@ -256,15 +256,7 @@ class SpotifyAPI {
       const artists = await this.searchArtists(artistName);
       
       if (!artists || artists.length === 0) {
-        return {
-          name: artistName,
-          id: null,
-          imageUrl: null,
-          spotifyId: null,
-          topTrack: null,
-          popularity: null,
-          genres: []
-        };
+        return this.createPlaceholderArtist(artistName);
       }
 
       const artist = artists[0];
@@ -281,7 +273,7 @@ class SpotifyAPI {
       }
 
       return {
-        name: artistName,
+        name: artistName, // Use the input name rather than what Spotify returns
         id: artist.id,
         imageUrl: artist.images && artist.images.length > 0 ? artist.images[0].url : null,
         spotifyId: artist.id,
@@ -291,15 +283,7 @@ class SpotifyAPI {
       };
     } catch (error) {
       console.error(`Error fetching artist details for ${artistName}:`, error);
-      return {
-        name: artistName,
-        id: null,
-        imageUrl: null,
-        spotifyId: null,
-        topTrack: null,
-        popularity: null,
-        genres: []
-      };
+      return this.createPlaceholderArtist(artistName);
     }
   }
 
