@@ -24,7 +24,6 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
   const [selectedArtists, setSelectedArtists] = useState<string[]>([]);
   const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
   const [artistsWithDetails, setArtistsWithDetails] = useState<{ [stageName: string]: ArtistWithDetails[] }>({});
-  const { toast } = useToast();
   const { user, spotifyAuth } = useAuth();
   const navigate = useNavigate();
   
@@ -87,7 +86,7 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
     };
 
     fetchArtistDetails();
-  }, [festival, spotifyAuth.accessToken, toast]);
+  }, [festival, spotifyAuth.accessToken]);
   
   const toggleArtistSelection = (artistName: string) => {
     setSelectedArtists(prev => {
@@ -409,4 +408,3 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
 };
 
 export default PlaylistGenerator;
-
