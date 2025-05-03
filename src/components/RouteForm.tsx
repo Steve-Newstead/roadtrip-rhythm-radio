@@ -6,15 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowRight, MapPin, Music } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Badge } from "./ui/badge";
-
-const FESTIVALS = [
-  { id: 'glastonbury', name: 'Glastonbury Festival', location: 'Pilton, UK' },
-  { id: 'coachella', name: 'Coachella', location: 'Indio, California' },
-  { id: 'tomorrowland', name: 'Tomorrowland', location: 'Boom, Belgium' },
-  { id: 'rockwerchter', name: 'Rock Werchter', location: 'Werchter, Belgium' },
-  { id: 'lollapalooza', name: 'Lollapalooza', location: 'Chicago, Illinois' },
-];
+import { festivals, FestivalData } from "@/data/festivals";
 
 interface RouteFormProps {
   onSubmit: (data: {
@@ -50,12 +42,14 @@ const RouteForm = ({ onSubmit }: RouteFormProps) => {
       return;
     }
     
-    const selectedFestival = FESTIVALS.find(f => f.id === festival);
+    const selectedFestival = festivals.find(f => 
+      f.festival_name.toLowerCase().replace(/\s+/g, '') === festival.toLowerCase()
+    );
     
     if (selectedFestival) {
       onSubmit({
         startLocation,
-        endLocation: selectedFestival.location,
+        endLocation: selectedFestival.festival_name,
         festival
       });
     }
@@ -101,11 +95,17 @@ const RouteForm = ({ onSubmit }: RouteFormProps) => {
                 <SelectValue placeholder="Choose a festival" />
               </SelectTrigger>
               <SelectContent>
-                {FESTIVALS.map((fest) => (
-                  <SelectItem key={fest.id} value={fest.id} className="flex items-center justify-between">
+                {festivals.map((fest) => (
+                  <SelectItem 
+                    key={fest.festival_name.toLowerCase().replace(/\s+/g, '')} 
+                    value={fest.festival_name.toLowerCase().replace(/\s+/g, '')}
+                    className="flex items-center justify-between"
+                  >
                     <div className="flex flex-col">
-                      <span>{fest.name}</span>
-                      <span className="text-xs text-muted-foreground">{fest.location}</span>
+                      <span>{fest.festival_name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(fest.start_date).toLocaleDateString()} - {new Date(fest.end_date).toLocaleDateString()}
+                      </span>
                     </div>
                   </SelectItem>
                 ))}

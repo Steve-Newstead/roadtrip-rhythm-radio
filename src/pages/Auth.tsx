@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -71,7 +72,7 @@ const Auth = () => {
                 <span></span>
               </div>
             </div>
-            <h1 className="text-3xl font-bold mb-2">Welcome to Roadtrip Rhythm</h1>
+            <h1 className="text-3xl font-bold mb-2">Welcome to Roadtrip Radio</h1>
             <p className="text-muted-foreground">Connect with Spotify to create your road trip playlists</p>
           </div>
 

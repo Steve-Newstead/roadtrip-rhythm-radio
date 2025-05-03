@@ -6,14 +6,6 @@ import Map from "@/components/Map";
 import PlaylistGenerator from "@/components/PlaylistGenerator";
 import { MapPin, Music } from "lucide-react";
 
-const MOCK_ARTIST_LOCATIONS = [
-  { id: "1", name: "Coldplay", location: "London, UK", lat: 51.5074, lng: -0.1278 },
-  { id: "2", name: "Mumford & Sons", location: "London, UK", lat: 51.5074, lng: -0.1278 },
-  { id: "3", name: "The Killers", location: "Las Vegas, Nevada", lat: 36.1699, lng: -115.1398 },
-  { id: "4", name: "Florence and the Machine", location: "London, UK", lat: 51.5074, lng: -0.1278 },
-  { id: "5", name: "Elbow", location: "Manchester, UK", lat: 53.4808, lng: -2.2426 }
-];
-
 const Index = () => {
   const [route, setRoute] = useState<{
     startLocation: string;
@@ -21,7 +13,7 @@ const Index = () => {
     festival: string;
   } | null>(null);
   
-  const [artistLocations, setArtistLocations] = useState<typeof MOCK_ARTIST_LOCATIONS | null>(null);
+  const [artistLocations, setArtistLocations] = useState<any[] | null>(null);
   
   const handleFormSubmit = (data: {
     startLocation: string;
@@ -30,10 +22,8 @@ const Index = () => {
   }) => {
     setRoute(data);
     
-    // Simulate API call to get artists
-    setTimeout(() => {
-      setArtistLocations(MOCK_ARTIST_LOCATIONS);
-    }, 1000);
+    // Clear any previous artist locations when selecting a new festival
+    setArtistLocations([]);
   };
 
   return (
@@ -48,7 +38,7 @@ const Index = () => {
             <span>Discover artists along your journey</span>
           </div>
           <h1 className="text-4xl sm:text-6xl font-bold mb-4 text-gradient leading-tight">
-            Roadtrip Rhythm Radio
+            Roadtrip Radio
           </h1>
           <p className="text-xl text-muted-foreground">
             Create the perfect playlist for your journey to your favorite music festival
@@ -107,7 +97,7 @@ const Index = () => {
               <span></span>
               <span></span>
             </div>
-            <h3 className="font-bold">Roadtrip Rhythm Radio</h3>
+            <h3 className="font-bold">Roadtrip Radio</h3>
           </div>
           <p className="text-sm text-muted-foreground">
             The perfect playlist for your festival road trip journey
