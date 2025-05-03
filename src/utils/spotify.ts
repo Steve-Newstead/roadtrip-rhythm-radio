@@ -91,7 +91,7 @@ class SpotifyAPI {
     });
 
     try {
-      const result = await this.fetchWithAuth(`/search?${params}`);
+      const result = await this.fetchWithAuth(`/search?q="London Grammar"&type=artist&limit=1`);
       console.log("Search result url:", `/search?${params}`);
       var resultsArtistSearch =  result.artists.items;
       console.log("Search result:", resultsArtistSearch);
