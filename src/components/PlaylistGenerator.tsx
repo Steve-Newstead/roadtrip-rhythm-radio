@@ -2,14 +2,12 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import ArtistCard from "./ArtistCard";
-import { Disc3, Headphones, ListMusic, Loader2, Loader2, Music, Shuffle, Sparkles } from "lucide-react";
+import { Disc3, Headphones, ListMusic, Loader2, Music, Shuffle, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { ArtistWithDetails, ArtistWithDetails, spotifyApi } from "@/utils/spotify";
+import { ArtistWithDetails, spotifyApi } from "@/utils/spotify";
 import { useNavigate } from "react-router-dom";
-import { getOrganizedArtistsByFestival } from "@/data/festivals";
-import StageArtistList from "./StageArtistList";
 import { getOrganizedArtistsByFestival } from "@/data/festivals";
 import StageArtistList from "./StageArtistList";
 
@@ -22,13 +20,10 @@ interface PlaylistGeneratorProps {
 const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGeneratorProps) => {
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
   const [isLoadingArtists, setIsLoadingArtists] = useState(false);
-  const [isLoadingArtists, setIsLoadingArtists] = useState(false);
   const [playlistCreated, setPlaylistCreated] = useState(false);
   const [selectedArtists, setSelectedArtists] = useState<string[]>([]);
   const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
   const [artistsWithDetails, setArtistsWithDetails] = useState<{ [stageName: string]: ArtistWithDetails[] }>({});
-  const [artistsWithDetails, setArtistsWithDetails] = useState<{ [stageName: string]: ArtistWithDetails[] }>({});
-  const { toast } = useToast();
   const { user, spotifyAuth } = useAuth();
   const navigate = useNavigate();
   
@@ -52,32 +47,28 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
         const organizedStages = getOrganizedArtistsByFestival(festival);
         const detailedArtists: { [stageName: string]: ArtistWithDetails[] } = {};
         
-        // Process each stage
+        // Collect all artist names across all stages
+        const allArtistNames: string[] = [];
         for (const stage of organizedStages) {
-          const artistDetails: ArtistWithDetails[] = [];
+          allArtistNames.push(...stage.artists);
+        }
+        
+        // Use the new batch API to fetch all artists at once
+        const artistDetailsMap = await spotifyApi.getMultipleArtistsByName(allArtistNames);
+        
+        // Organize artists by stage
+        for (const stage of organizedStages) {
+          const stageArtists: ArtistWithDetails[] = [];
           
-          // Process artists in parallel with rate limiting
-          const chunks = [];
-          for (let i = 0; i < stage.artists.length; i += 5) {
-            chunks.push(stage.artists.slice(i, i + 5));
-          }
-          
-          for (const chunk of chunks) {
-            const artistPromises = chunk.map(artistName => 
-              spotifyApi.getArtistDetails(artistName)
-            );
-            
-            const results = await Promise.all(artistPromises);
-            artistDetails.push(...results.filter(Boolean) as ArtistWithDetails[]);
-            
-            // Add delay to prevent rate limiting
-            if (chunks.length > 1) {
-              await new Promise(resolve => setTimeout(resolve, 1000));
+          for (const artistName of stage.artists) {
+            const artistDetails = artistDetailsMap.get(artistName);
+            if (artistDetails) {
+              stageArtists.push(artistDetails);
             }
           }
           
-          // Sort artists alphabetically
-          detailedArtists[stage.stageName] = artistDetails.sort((a, b) => 
+          // Sort artists alphabetically within each stage
+          detailedArtists[stage.stageName] = stageArtists.sort((a, b) => 
             a.name.localeCompare(b.name)
           );
         }
@@ -96,103 +87,7 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
     };
 
     fetchArtistDetails();
-  }, [festival, spotifyAuth.accessToken, toast]);
-  
-  const toggleArtistSelection = (artistName: string) => {
-  // Load artists when festival changes
-  useEffect(() => {
-    const fetchArtistDetails = async () => {
-      if (!festival) return;
-      
-      setIsLoadingArtists(true);
-      setSelectedArtists([]);
-      
-      try {
-        // Check if we have Spotify authentication
-        if (!spotifyAuth.accessToken) {
-          // If no auth, we'll show a placeholder state instead of failing
-          const organizedStages = getOrganizedArtistsByFestival(festival);
-          const placeholderDetails: { [stageName: string]: ArtistWithDetails[] } = {};
-          
-          // Create placeholder artist entries without Spotify details
-          for (const stage of organizedStages) {
-            placeholderDetails[stage.stageName] = stage.artists.map(name => ({
-              name,
-              id: null,
-              imageUrl: null,
-              spotifyId: null,
-              topTrack: null,
-              popularity: null,
-              genres: []
-            })).sort((a, b) => a.name.localeCompare(b.name));
-          }
-          
-          setArtistsWithDetails(placeholderDetails);
-          setIsLoadingArtists(false);
-          return;
-        }
-        
-        const organizedStages = getOrganizedArtistsByFestival(festival);
-        const detailedArtists: { [stageName: string]: ArtistWithDetails[] } = {};
-        
-        // Process each stage
-        for (const stage of organizedStages) {
-          const artistDetails: ArtistWithDetails[] = [];
-          
-          // Process artists in parallel with rate limiting
-          const chunks = [];
-          for (let i = 0; i < stage.artists.length; i += 5) {
-            chunks.push(stage.artists.slice(i, i + 5));
-          }
-          
-          for (const chunk of chunks) {
-            const artistPromises = chunk.map(artistName => 
-              spotifyApi.getArtistDetails(artistName)
-                .catch(error => {
-                  console.error(`Error fetching artist details for ${artistName}:`, error);
-                  // Return a basic placeholder if there's an error
-                  return {
-                    name: artistName,
-                    id: null,
-                    imageUrl: null,
-                    spotifyId: null,
-                    topTrack: null,
-                    popularity: null,
-                    genres: []
-                  };
-                })
-            );
-            
-            const results = await Promise.all(artistPromises);
-            artistDetails.push(...results.filter(Boolean) as ArtistWithDetails[]);
-            
-            // Add delay to prevent rate limiting
-            if (chunks.length > 1) {
-              await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-          }
-          
-          // Sort artists alphabetically
-          detailedArtists[stage.stageName] = artistDetails.sort((a, b) => 
-            a.name.localeCompare(b.name)
-          );
-        }
-        
-        setArtistsWithDetails(detailedArtists);
-      } catch (error) {
-        console.error("Error fetching artist details:", error);
-        toast({
-          title: "Error loading artists",
-          description: "Could not load artist information from Spotify",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoadingArtists(false);
-      }
-    };
-
-    fetchArtistDetails();
-  }, [festival, spotifyAuth.accessToken, toast]);
+  }, [festival, spotifyAuth.accessToken]);
   
   const toggleArtistSelection = (artistName: string) => {
     setSelectedArtists(prev => {
@@ -202,14 +97,6 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
         return [...prev, artistName];
       }
     });
-  };
-
-  const findArtistByName = (name: string): ArtistWithDetails | null => {
-    for (const stageName in artistsWithDetails) {
-      const artist = artistsWithDetails[stageName].find(a => a.name === name);
-      if (artist) return artist;
-    }
-    return null;
   };
 
   const findArtistByName = (name: string): ArtistWithDetails | null => {
@@ -235,15 +122,6 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
       return;
     }
     
-    if (!festival || !startLocation) {
-      toast({
-        title: "Missing information",
-        description: "Please select a festival and starting point",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     try {
       setIsCreatingPlaylist(true);
       
@@ -251,9 +129,6 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
       const userProfile = await spotifyApi.getUserProfile();
       
       // Create a new playlist
-      const festivalName = festival.replace(/([a-z])([A-Z])/g, '$1 $2');
-      const playlistName = `Roadtrip Radio: ${festivalName} from ${startLocation}`;
-      const playlistDescription = `A playlist for my road trip to ${festivalName} from ${startLocation}`;
       const festivalName = festival.replace(/([a-z])([A-Z])/g, '$1 $2');
       const playlistName = `Roadtrip Radio: ${festivalName} from ${startLocation}`;
       const playlistDescription = `A playlist for my road trip to ${festivalName} from ${startLocation}`;
@@ -266,23 +141,25 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
       );
       
       // Get tracks for each selected artist
-      // Get tracks for each selected artist
-      let trackUris: string[] = [];
+      // Collect all Spotify IDs for selected artists
+      const selectedArtistIds: string[] = [];
       
       for (const artistName of selectedArtists) {
         const artist = findArtistByName(artistName);
         if (artist?.spotifyId) {
-      for (const artistName of selectedArtists) {
-        const artist = findArtistByName(artistName);
-        if (artist?.spotifyId) {
-          try {
-            const topTracksResponse = await spotifyApi.getArtistTopTracks(artist.spotifyId);
-            const artistTrackUris = topTracksResponse.tracks.slice(0, 3).map((track: any) => track.uri);
-            trackUris.push(...artistTrackUris);
-          } catch (error) {
-            console.error(`Error getting top tracks for ${artist.name}:`, error);
-          }
+          selectedArtistIds.push(artist.spotifyId);
         }
+      }
+      
+      // Use the batch API to get top tracks for all selected artists
+      const topTracksMap = await spotifyApi.getMultipleArtistsTopTracks(selectedArtistIds);
+      
+      // Collect track URIs from the top tracks (up to 3 per artist)
+      let trackUris: string[] = [];
+      for (const artistId in topTracksMap) {
+        const artistTracks = topTracksMap[artistId];
+        const artistTrackUris = artistTracks.slice(0, 3).map(track => track.uri);
+        trackUris.push(...artistTrackUris);
       }
       
       // Add tracks to playlist
@@ -320,11 +197,6 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
     (count, artists) => count + artists.length, 0
   );
   
-  const allStages = Object.keys(artistsWithDetails);
-  const totalArtists = Object.values(artistsWithDetails).reduce(
-    (count, artists) => count + artists.length, 0
-  );
-  
   // No artists found for this festival
   if (!isLoadingArtists && totalArtists === 0) {
     return (
@@ -338,36 +210,6 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
   }
   
   const needsAuthentication = !user || !spotifyAuth.accessToken;
-  
-  const renderSelectedArtistsTab = () => {
-    if (selectedArtists.length === 0) {
-      return (
-        <div className="rounded-3xl overflow-hidden bg-muted/40 p-8 text-center">
-          <h3 className="text-xl font-medium mb-2">No artists selected yet</h3>
-          <p className="text-muted-foreground">
-            Select some artists to include them in your playlist
-          </p>
-        </div>
-      );
-    }
-    
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {selectedArtists.map(artistName => {
-          const artist = findArtistByName(artistName);
-          if (!artist) return null;
-          return (
-            <ArtistCard 
-              key={artistName} 
-              artist={artist} 
-              isSelected={true}
-              onToggle={() => toggleArtistSelection(artistName)}
-            />
-          );
-        })}
-      </div>
-    );
-  };
   
   const renderSelectedArtistsTab = () => {
     if (selectedArtists.length === 0) {
@@ -429,7 +271,7 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
     <div className="w-full mt-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Your Festival Playlist</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Roadtrip Radio</h2>
           <p className="text-muted-foreground">Create a playlist with artists playing at {endLocation}</p>
         </div>
         
@@ -501,19 +343,39 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
             </div>
           ) : (
             <div className="space-y-8">
-              {allStages.map(stageName => {
-                const stageData = getOrganizedArtistsByFestival(festival).find(s => s.stageName === stageName);
-                return (
+              {/* First display main stages */}
+              {allStages
+                .filter(stageName => {
+                  const stageData = getOrganizedArtistsByFestival(festival).find(s => s.stageName === stageName);
+                  return stageData?.isMainStage;
+                })
+                .map(stageName => (
                   <StageArtistList
                     key={stageName}
                     stageName={stageName}
                     artists={artistsWithDetails[stageName]}
-                    isMainStage={stageData?.isMainStage || false}
+                    isMainStage={true}
                     selectedArtists={selectedArtists}
                     onArtistToggle={toggleArtistSelection}
                   />
-                );
-              })}
+                ))}
+              
+              {/* Then display other stages */}
+              {allStages
+                .filter(stageName => {
+                  const stageData = getOrganizedArtistsByFestival(festival).find(s => s.stageName === stageName);
+                  return !stageData?.isMainStage;
+                })
+                .map(stageName => (
+                  <StageArtistList
+                    key={stageName}
+                    stageName={stageName}
+                    artists={artistsWithDetails[stageName]}
+                    isMainStage={false}
+                    selectedArtists={selectedArtists}
+                    onArtistToggle={toggleArtistSelection}
+                  />
+                ))}
             </div>
           )}
         </TabsContent>

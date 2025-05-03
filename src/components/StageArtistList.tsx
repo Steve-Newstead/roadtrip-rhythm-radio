@@ -19,7 +19,8 @@ const StageArtistList = ({
   selectedArtists, 
   onArtistToggle 
 }: StageArtistListProps) => {
-  const [isExpanded, setIsExpanded] = useState(isMainStage);
+  // Default to expanded view for main stages and for stages with 6 or fewer artists
+  const [isExpanded, setIsExpanded] = useState(isMainStage || artists.length <= 6);
   
   return (
     <div className="mb-8">
@@ -29,6 +30,7 @@ const StageArtistList = ({
           {isMainStage && (
             <Badge className="bg-festival-pink text-white">Main Stage</Badge>
           )}
+          <span className="text-sm text-muted-foreground">({artists.length} artists)</span>
         </div>
         <button
           onClick={() => setIsExpanded(!isExpanded)}
