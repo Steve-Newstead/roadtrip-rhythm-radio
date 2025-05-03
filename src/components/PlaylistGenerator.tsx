@@ -44,6 +44,30 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
       setSelectedArtists([]);
       
       try {
+        // Check if we have Spotify authentication
+        if (!spotifyAuth.accessToken) {
+          // If no auth, we'll show a placeholder state instead of failing
+          const organizedStages = getOrganizedArtistsByFestival(festival);
+          const placeholderDetails: { [stageName: string]: ArtistWithDetails[] } = {};
+          
+          // Create placeholder artist entries without Spotify details
+          for (const stage of organizedStages) {
+            placeholderDetails[stage.stageName] = stage.artists.map(name => ({
+              name,
+              id: null,
+              imageUrl: null,
+              spotifyId: null,
+              topTrack: null,
+              popularity: null,
+              genres: []
+            })).sort((a, b) => a.name.localeCompare(b.name));
+          }
+          
+          setArtistsWithDetails(placeholderDetails);
+          setIsLoadingArtists(false);
+          return;
+        }
+        
         const organizedStages = getOrganizedArtistsByFestival(festival);
         const detailedArtists: { [stageName: string]: ArtistWithDetails[] } = {};
         
@@ -60,6 +84,19 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
           for (const chunk of chunks) {
             const artistPromises = chunk.map(artistName => 
               spotifyApi.getArtistDetails(artistName)
+                .catch(error => {
+                  console.error(`Error fetching artist details for ${artistName}:`, error);
+                  // Return a basic placeholder if there's an error
+                  return {
+                    name: artistName,
+                    id: null,
+                    imageUrl: null,
+                    spotifyId: null,
+                    topTrack: null,
+                    popularity: null,
+                    genres: []
+                  };
+                })
             );
             
             const results = await Promise.all(artistPromises);
@@ -238,13 +275,39 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
       </div>
     );
   };
+
+  // Warning for unauthenticated users
+  const renderAuthWarning = () => {
+    if (!needsAuthentication) return null;
+    
+    return (
+      <div className="mb-6 p-4 border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 rounded-lg">
+        <div className="flex items-start gap-3">
+          <Music className="h-5 w-5 text-amber-500 mt-0.5" />
+          <div>
+            <h4 className="font-medium text-amber-800 dark:text-amber-300 mb-1">Connect with Spotify</h4>
+            <p className="text-sm text-amber-700 dark:text-amber-400">
+              Please connect your Spotify account to see artist images and create playlists. 
+              <Button 
+                variant="link" 
+                onClick={() => navigate("/auth")} 
+                className="px-1 py-0 h-auto text-sm font-medium underline text-amber-700 dark:text-amber-300"
+              >
+                Connect now
+              </Button>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
   
   return (
     <div className="w-full mt-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Your Festival Playlist</h2>
-          <p className="text-muted-foreground">Create a playlist with artists playing at {endLocation}</p>
+          <p className="text-muted-foreground">Create a playlist with artists playing at {festival}</p>
         </div>
         
         {playlistCreated && playlistUrl ? (
@@ -287,6 +350,9 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
           </Button>
         )}
       </div>
+      
+      {/* Display warning for unauthenticated users */}
+      {renderAuthWarning()}
       
       <Tabs defaultValue="artists" className="w-full">
         <TabsList className="mb-8 bg-muted/30 p-1 rounded-full w-auto inline-flex">
