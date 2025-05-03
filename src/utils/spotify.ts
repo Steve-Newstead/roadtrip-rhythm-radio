@@ -152,6 +152,7 @@ class SpotifyAPI {
         if (idsBatch.length > 0) {
           try {
             const response = await this.fetchWithAuth(`/artists?ids=${idsBatch.join(',')}`);
+            console.log("Fetched artist details:", response);
             
             if (response.artists) {
               response.artists.forEach((artist: SpotifyArtist) => {
