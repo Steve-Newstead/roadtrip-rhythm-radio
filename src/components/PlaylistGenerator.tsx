@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -30,7 +31,6 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
   useEffect(() => {
     if (spotifyAuth.accessToken) {
       spotifyApi.setAccessToken(spotifyAuth.accessToken);
-      console.log('steve check' + spotifyAuth.accessToken);
     }
   }, [spotifyAuth.accessToken]);
   
@@ -46,21 +46,14 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
         const organizedStages = getOrganizedArtistsByFestival(festival);
         const detailedArtists: { [stageName: string]: ArtistWithDetails[] } = {};
         
-        // Collect all artist names across all stages
-        const allArtistNames: string[] = [];
+        // Process each stage
         for (const stage of organizedStages) {
-          allArtistNames.push(...stage.artists);
-        }
-        
-        // Use the new batch API to fetch all artists at once
-        const artistDetailsMap = await spotifyApi.getMultipleArtistsByName(allArtistNames);
-        
-        // Organize artists by stage
-        for (const stage of organizedStages) {
-          const stageArtists: ArtistWithDetails[] = [];
+          // Use the new API that leverages Spotify IDs
+          const artistDetailsMap = await spotifyApi.getArtistsWithDetails(stage.artists);
           
-          for (const artistName of stage.artists) {
-            const artistDetails = artistDetailsMap.get(artistName);
+          const stageArtists: ArtistWithDetails[] = [];
+          for (const artist of stage.artists) {
+            const artistDetails = artistDetailsMap.get(artist.name);
             if (artistDetails) {
               stageArtists.push(artistDetails);
             }
