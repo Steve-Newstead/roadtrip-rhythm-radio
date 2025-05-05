@@ -2,30 +2,20 @@
 import { useState } from "react";
 import Header from "@/components/Header";
 import RouteForm from "@/components/RouteForm";
-import Map from "@/components/Map";
 import PlaylistGenerator from "@/components/PlaylistGenerator";
-import { MapPin, Music } from "lucide-react";
+import { Music, Clock } from "lucide-react";
 
 const Index = () => {
   const [route, setRoute] = useState<{
-    startLocation: string;
-    endLocation: string;
     festival: string;
     tripDuration: number; // in minutes
   } | null>(null);
   
-  const [artistLocations, setArtistLocations] = useState<any[] | null>(null);
-  
   const handleFormSubmit = (data: {
-    startLocation: string;
-    endLocation: string;
     festival: string;
     tripDuration: number;
   }) => {
     setRoute(data);
-    
-    // Clear any previous artist locations when selecting a new festival
-    setArtistLocations([]);
   };
 
   return (
@@ -37,13 +27,13 @@ const Index = () => {
         <div className="text-center max-w-3xl mx-auto mb-12">
           <div className="inline-flex items-center justify-center gap-2 mb-4 bg-muted/50 px-4 py-2 rounded-full text-sm">
             <Music size={16} className="text-festival-pink" />
-            <span>Perfect length playlists for your journey</span>
+            <span>Perfect length playlists for your festival journey</span>
           </div>
           <h1 className="text-4xl sm:text-6xl font-bold mb-4 text-gradient leading-tight">
             Roadtrip Radio
           </h1>
           <p className="text-xl text-muted-foreground">
-            Create the perfect playlist for your journey to your favorite music festival
+            Create the perfect playlist that matches the exact duration of your festival trip
           </p>
         </div>
 
@@ -54,35 +44,47 @@ const Index = () => {
             
             {route && (
               <div className="mt-6 p-4 bg-muted/30 rounded-3xl">
-                <div className="flex items-start gap-2 mb-2">
-                  <MapPin size={16} className="mt-1 text-festival-pink" />
-                  <div>
-                    <span className="text-xs text-muted-foreground">Starting point</span>
-                    <p className="font-medium">{route.startLocation}</p>
-                  </div>
-                </div>
                 <div className="flex items-start gap-2">
-                  <Music size={16} className="mt-1 text-festival-blue" />
+                  <Clock size={16} className="mt-1 text-festival-purple" />
                   <div>
-                    <span className="text-xs text-muted-foreground">Destination</span>
-                    <p className="font-medium">{route.endLocation}</p>
+                    <span className="text-xs text-muted-foreground">Travel duration</span>
+                    <p className="font-medium">
+                      {Math.floor(route.tripDuration / 60)} hours {route.tripDuration % 60} minutes
+                    </p>
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Map and Results */}
+          {/* Results */}
           <div className="lg:col-span-2 space-y-8">
-            <Map 
-              startLocation={route?.startLocation} 
-              endLocation={route?.endLocation}
-              artistLocations={artistLocations || undefined}
-            />
+            {route && (
+              <div className="p-6 bg-muted/20 rounded-3xl">
+                <div className="flex items-center gap-2 mb-4">
+                  <Clock size={20} className="text-festival-purple" />
+                  <h2 className="text-xl font-semibold">Journey Details</h2>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Festival:</span>
+                    <span className="font-medium">{route.festival.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Estimated travel time:</span>
+                    <span className="font-medium bg-festival-purple/10 text-festival-purple px-3 py-1 rounded-full">
+                      {Math.floor(route.tripDuration / 60)} hours {route.tripDuration % 60} minutes
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Total playlist duration needed:</span>
+                    <span className="font-medium">{route.tripDuration} minutes</span>
+                  </div>
+                </div>
+              </div>
+            )}
             
             <PlaylistGenerator 
-              startLocation={route?.startLocation}
-              endLocation={route?.endLocation}
               festival={route?.festival}
               tripDuration={route?.tripDuration}
             />

@@ -4,36 +4,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRight, MapPin, Music, Clock } from "lucide-react";
+import { Music, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { festivals, FestivalData } from "@/data/festivals";
+import { festivals } from "@/data/festivals";
 
 interface RouteFormProps {
   onSubmit: (data: {
-    startLocation: string;
-    endLocation: string;
     festival: string;
     tripDuration: number;
   }) => void;
 }
 
 const RouteForm = ({ onSubmit }: RouteFormProps) => {
-  const [startLocation, setStartLocation] = useState("");
   const [festival, setFestival] = useState("");
-  const [tripDuration, setTripDuration] = useState("120"); // Default to 2 hours (120 min)
+  const [tripDurationHours, setTripDurationHours] = useState("2");
+  const [tripDurationMinutes, setTripDurationMinutes] = useState("0");
   const { toast } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!startLocation) {
-      toast({
-        title: "Starting point required",
-        description: "Please enter your starting location",
-        variant: "destructive"
-      });
-      return;
-    }
     
     if (!festival) {
       toast({
@@ -45,11 +34,14 @@ const RouteForm = ({ onSubmit }: RouteFormProps) => {
     }
     
     // Parse trip duration as number
-    const duration = parseInt(tripDuration, 10);
-    if (isNaN(duration) || duration <= 0) {
+    const hours = parseInt(tripDurationHours, 10) || 0;
+    const minutes = parseInt(tripDurationMinutes, 10) || 0;
+    const totalMinutes = (hours * 60) + minutes;
+    
+    if (totalMinutes <= 0) {
       toast({
         title: "Invalid trip duration",
-        description: "Please enter a valid trip duration in minutes",
+        description: "Please enter a valid trip duration",
         variant: "destructive"
       });
       return;
@@ -61,10 +53,8 @@ const RouteForm = ({ onSubmit }: RouteFormProps) => {
     
     if (selectedFestival) {
       onSubmit({
-        startLocation,
-        endLocation: selectedFestival.festival_name,
         festival,
-        tripDuration: duration
+        tripDuration: totalMinutes
       });
     }
   };
@@ -72,49 +62,13 @@ const RouteForm = ({ onSubmit }: RouteFormProps) => {
   return (
     <Card className="border-0 shadow-md overflow-hidden">
       <div className="bg-gradient-to-r from-festival-purple to-festival-blue p-4">
-        <h2 className="text-white text-xl font-bold">Create Your Festival Journey</h2>
+        <h2 className="text-white text-xl font-bold">Festival Roadtrip Playlist</h2>
         <p className="text-white/80 text-sm">
-          Get the perfect playlist for your road trip
+          Enter your travel time and we'll create the perfect playlist for your journey
         </p>
       </div>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-5 p-5">
-          <div className="space-y-2">
-            <label htmlFor="start" className="text-sm font-medium flex items-center gap-2">
-              <MapPin size={16} className="text-festival-pink" />
-              <span>Starting Location</span>
-            </label>
-            <Input
-              id="start"
-              placeholder="Enter your starting point"
-              value={startLocation}
-              onChange={(e) => setStartLocation(e.target.value)}
-              className="rounded-full border-2 focus-visible:border-festival-purple focus-visible:ring-festival-purple"
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <label htmlFor="duration" className="text-sm font-medium flex items-center gap-2">
-              <Clock size={16} className="text-festival-pink" />
-              <span>Trip Duration (minutes)</span>
-            </label>
-            <Input
-              id="duration"
-              type="number"
-              placeholder="Enter trip duration in minutes"
-              value={tripDuration}
-              onChange={(e) => setTripDuration(e.target.value)}
-              min="1"
-              className="rounded-full border-2 focus-visible:border-festival-purple focus-visible:ring-festival-purple"
-            />
-          </div>
-          
-          <div className="flex items-center justify-center my-2">
-            <div className="w-full h-px bg-border"></div>
-            <ArrowRight className="mx-2 text-muted-foreground" size={16} />
-            <div className="w-full h-px bg-border"></div>
-          </div>
-          
           <div className="space-y-2">
             <label htmlFor="festival" className="text-sm font-medium flex items-center gap-2">
               <Music size={16} className="text-festival-blue" />
@@ -141,6 +95,40 @@ const RouteForm = ({ onSubmit }: RouteFormProps) => {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="duration" className="text-sm font-medium flex items-center gap-2">
+              <Clock size={16} className="text-festival-pink" />
+              <span>Your Travel Time</span>
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Input
+                  id="durationHours"
+                  type="number"
+                  placeholder="Hours"
+                  value={tripDurationHours}
+                  onChange={(e) => setTripDurationHours(e.target.value)}
+                  min="0"
+                  className="rounded-full border-2 focus-visible:border-festival-purple focus-visible:ring-festival-purple"
+                />
+                <p className="text-xs text-center mt-1 text-muted-foreground">Hours</p>
+              </div>
+              <div>
+                <Input
+                  id="durationMinutes"
+                  type="number"
+                  placeholder="Minutes"
+                  value={tripDurationMinutes}
+                  onChange={(e) => setTripDurationMinutes(e.target.value)}
+                  min="0"
+                  max="59"
+                  className="rounded-full border-2 focus-visible:border-festival-purple focus-visible:ring-festival-purple"
+                />
+                <p className="text-xs text-center mt-1 text-muted-foreground">Minutes</p>
+              </div>
+            </div>
           </div>
           
           <Button 
