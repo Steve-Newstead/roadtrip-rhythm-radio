@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 export interface SpotifyArtist {
@@ -79,6 +78,48 @@ class SpotifyAPI {
     return this.fetchWithAuth('/me');
   }
 
+  // Get multiple artists directly using their Spotify IDs
+  async getMultipleArtists(spotifyIds: string[]): Promise<SpotifyArtist[]> {
+    if (!spotifyIds.length || !this.accessToken) {
+      return [];
+    }
+
+    try {
+      // Filter out null/undefined IDs
+      const validIds = spotifyIds.filter(Boolean);
+      
+      // If we don't have any valid IDs, return empty array
+      if (validIds.length === 0) {
+        return [];
+      }
+      
+      // Spotify API allows maximum 50 IDs per request
+      const results: SpotifyArtist[] = [];
+      
+      // Process in batches of 50
+      for (let i = 0; i < validIds.length; i += 50) {
+        const batch = validIds.slice(i, i + 50);
+        const endpoint = `/artists?ids=${batch.join(',')}`;
+        
+        const response = await this.fetchWithAuth(endpoint);
+        
+        if (response && response.artists) {
+          results.push(...response.artists);
+        }
+        
+        // Add a small delay between batches to prevent rate limiting
+        if (i + 50 < validIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
+      
+      return results;
+    } catch (error) {
+      console.error("Error fetching multiple artists:", error);
+      return [];
+    }
+  }
+
   async searchArtists(query: string, limit = 1) {
     if (!this.accessToken) {
       return [];
@@ -103,140 +144,74 @@ class SpotifyAPI {
     }
   }
 
-  async getMultipleArtistsByName(artistNames: string[]): Promise<Map<string, ArtistWithDetails>> {
-    // Return a map of artist name to details
+  // Updated to work with direct Spotify IDs
+  async getArtistsWithDetails(artists: { name: string; spotify_id: string | null }[]): Promise<Map<string, ArtistWithDetails>> {
     const artistDetailsMap = new Map<string, ArtistWithDetails>();
     
-    // If no token is available, return placeholder details for each artist
-    if (!this.accessToken) {
-      artistNames.forEach(name => {
-        artistDetailsMap.set(name, this.createPlaceholderArtist(name));
+    // If no token is available or no artists, return empty map
+    if (!this.accessToken || !artists.length) {
+      artists.forEach(artist => {
+        artistDetailsMap.set(artist.name, this.createPlaceholderArtist(artist.name));
       });
       return artistDetailsMap;
     }
     
     try {
-      // First, search for these artists to get their IDs (we need to do this in batches)
-      const searchBatchSize = 5;
-      const searchResults = new Map<string, { id: string, name: string }>();  // Map of artist name to Spotify ID and actual Spotify name
+      // Collect all Spotify IDs
+      const spotifyIds = artists
+        .filter(artist => artist.spotify_id)
+        .map(artist => artist.spotify_id) as string[];
       
-      for (let i = 0; i < artistNames.length; i += searchBatchSize) {
-        const batch = artistNames.slice(i, i + searchBatchSize);
-        const searchPromises = batch.map(name => 
-          this.searchArtists(name)
-            .then(artists => {
-              if (artists && artists.length > 0) {
-                // Store both the ID and the actual name from Spotify (might be slightly different from our input)
-                searchResults.set(name, { id: artists[0].id, name: artists[0].name });
-              }
-            })
-            .catch(error => {
-              console.error(`Error searching for artist ${name}:`, error);
-            })
-        );
-        
-        await Promise.all(searchPromises);
-        
-        // Add a small delay between batches to prevent rate limiting
-        if (i + searchBatchSize < artistNames.length) {
-          await new Promise(resolve => setTimeout(resolve, 300));
+      // Map to keep track of Spotify ID to original artist name
+      const idToNameMap = new Map<string, string>();
+      artists.forEach(artist => {
+        if (artist.spotify_id) {
+          idToNameMap.set(artist.spotify_id, artist.name);
         }
-      }
+      });
       
-      // Collect all found Spotify IDs
-      const foundSpotifyIds = Array.from(searchResults.values())
-        .map(result => result.id)
-        .filter(Boolean);
+      // Get artist details via the bulk API
+      const spotifyArtists = await this.getMultipleArtists(spotifyIds);
       
-      // Now get all artist details in batches of 50 (Spotify API limit)
-      const spotifyArtistDetails = new Map<string, SpotifyArtist>();
-      for (let i = 0; i < foundSpotifyIds.length; i += 50) {
-        const idsBatch = foundSpotifyIds.slice(i, i + 50);
+      // Create a map of Spotify ID to artist details
+      const spotifyArtistsMap = new Map<string, SpotifyArtist>();
+      spotifyArtists.forEach(artist => {
+        spotifyArtistsMap.set(artist.id, artist);
+      });
+      
+      // Get top tracks for artists with valid Spotify IDs
+      const topTracksMap = await this.getMultipleArtistsTopTracks(spotifyIds);
+      
+      // Build the final artist details map - using original name as key
+      artists.forEach(artist => {
+        const { name, spotify_id } = artist;
         
-        if (idsBatch.length > 0) {
-          try {
-            const response = await this.fetchWithAuth(`/artists?ids=${idsBatch.join(',')}`);
-            console.log("Fetched artist details:", response);
-            
-            if (response.artists) {
-              response.artists.forEach((artist: SpotifyArtist) => {
-                spotifyArtistDetails.set(artist.id, artist);
-              });
-            }
-          } catch (error) {
-            console.error("Error fetching multiple artists:", error);
-          }
+        if (spotify_id && spotifyArtistsMap.has(spotify_id)) {
+          const spotifyArtist = spotifyArtistsMap.get(spotify_id)!;
+          const topTrack = topTracksMap[spotify_id]?.[0]?.name || null;
           
-          // Add a small delay between batches to prevent rate limiting
-          if (i + 50 < foundSpotifyIds.length) {
-            await new Promise(resolve => setTimeout(resolve, 300));
-          }
-        }
-      }
-      
-      // Get top tracks for each artist (we still need to do this one by one)
-      const topTracksMap = new Map<string, string>();
-      const topTracksBatchSize = 5;
-      
-      const spotifyIds = Array.from(spotifyArtistDetails.keys());
-      for (let i = 0; i < spotifyIds.length; i += topTracksBatchSize) {
-        const batch = spotifyIds.slice(i, i + topTracksBatchSize);
-        const topTrackPromises = batch.map(id => 
-          this.getArtistTopTracks(id)
-            .then(data => {
-              if (data && data.tracks && data.tracks.length > 0) {
-                topTracksMap.set(id, data.tracks[0].name);
-              }
-            })
-            .catch(error => {
-              console.error(`Error fetching top tracks for artist ${id}:`, error);
-            })
-        );
-        
-        await Promise.all(topTrackPromises);
-        
-        // Add a small delay between batches to prevent rate limiting
-        if (i + topTracksBatchSize < spotifyIds.length) {
-          await new Promise(resolve => setTimeout(resolve, 300));
-        }
-      }
-      
-      // Now build the final artist details map - critically, use the original artist name as the key
-      // but incorporate all the Spotify data correctly
-      artistNames.forEach(originalName => {
-        const searchResult = searchResults.get(originalName);
-        
-        if (searchResult) {
-          const { id, name: spotifyName } = searchResult;
-          const artist = spotifyArtistDetails.get(id);
-          const topTrack = topTracksMap.get(id);
-          
-          if (artist) {
-            artistDetailsMap.set(originalName, {
-              name: originalName, // Use the original name from our data
-              id: artist.id,
-              imageUrl: artist.images && artist.images.length > 0 ? artist.images[0].url : null,
-              spotifyId: artist.id,
-              topTrack,
-              popularity: artist.popularity || null,
-              genres: artist.genres || []
-            });
-          } else {
-            // For artists we found in search but couldn't get details
-            artistDetailsMap.set(originalName, this.createPlaceholderArtist(originalName));
-          }
+          artistDetailsMap.set(name, {
+            name,
+            id: spotifyArtist.id,
+            imageUrl: spotifyArtist.images && spotifyArtist.images.length > 0 ? spotifyArtist.images[0].url : null,
+            spotifyId: spotify_id,
+            topTrack,
+            popularity: spotifyArtist.popularity || null,
+            genres: spotifyArtist.genres || []
+          });
         } else {
-          // For artists we couldn't find at all
-          artistDetailsMap.set(originalName, this.createPlaceholderArtist(originalName));
+          // For artists without valid Spotify data
+          artistDetailsMap.set(name, this.createPlaceholderArtist(name));
         }
       });
       
       return artistDetailsMap;
     } catch (error) {
-      console.error("Error in getMultipleArtistsByName:", error);
+      console.error("Error in getArtistsWithDetails:", error);
+      
       // Return placeholders for all artists on error
-      artistNames.forEach(name => {
-        artistDetailsMap.set(name, this.createPlaceholderArtist(name));
+      artists.forEach(artist => {
+        artistDetailsMap.set(artist.name, this.createPlaceholderArtist(artist.name));
       });
       return artistDetailsMap;
     }
@@ -255,16 +230,28 @@ class SpotifyAPI {
     };
   }
 
-  async getArtistDetails(artistName: string): Promise<ArtistWithDetails | null> {
+  async getArtistDetails(artistName: string, spotifyId: string | null = null): Promise<ArtistWithDetails | null> {
     try {
-      // Search for the artist
-      const artists = await this.searchArtists(artistName);
+      let artist: SpotifyArtist | null = null;
       
-      if (!artists || artists.length === 0) {
+      if (spotifyId) {
+        // If we have a Spotify ID, use it directly
+        const artists = await this.getMultipleArtists([spotifyId]);
+        if (artists && artists.length > 0) {
+          artist = artists[0];
+        }
+      } else {
+        // Fallback to search by name
+        const artists = await this.searchArtists(artistName);
+        if (artists && artists.length > 0) {
+          artist = artists[0];
+        }
+      }
+      
+      if (!artist) {
         return this.createPlaceholderArtist(artistName);
       }
 
-      const artist = artists[0];
       let topTrack = null;
 
       try {
@@ -348,4 +335,3 @@ class SpotifyAPI {
 
 // Export a singleton instance
 export const spotifyApi = new SpotifyAPI();
-
