@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import ArtistCard from "./ArtistCard";
-import { Disc3, Headphones, ListMusic, Loader2, Music, Shuffle, Sparkles } from "lucide-react";
+import { Disc3, Headphones, ListMusic, Loader2, Music, Shuffle, Sparkles, Clock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ArtistWithDetails, spotifyApi } from "@/utils/spotify";
 import { useNavigate } from "react-router-dom";
@@ -15,15 +14,17 @@ interface PlaylistGeneratorProps {
   startLocation?: string;
   endLocation?: string;
   festival?: string;
+  tripDuration?: number; // in minutes
 }
 
-const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGeneratorProps) => {
+const PlaylistGenerator = ({ startLocation, endLocation, festival, tripDuration = 120 }: PlaylistGeneratorProps) => {
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
   const [isLoadingArtists, setIsLoadingArtists] = useState(false);
   const [playlistCreated, setPlaylistCreated] = useState(false);
   const [selectedArtists, setSelectedArtists] = useState<string[]>([]);
   const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
   const [artistsWithDetails, setArtistsWithDetails] = useState<{ [stageName: string]: ArtistWithDetails[] }>({});
+  const [estimatedPlaylistDuration, setEstimatedPlaylistDuration] = useState(0); // in minutes
   const { user, spotifyAuth } = useAuth();
   const navigate = useNavigate();
   
@@ -79,6 +80,15 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
     fetchArtistDetails();
   }, [festival, spotifyAuth.accessToken]);
   
+  // Calculate estimated playlist duration when selected artists change
+  useEffect(() => {
+    // For now, we'll use a simple estimation: 3-4 minutes per song, 3 songs per artist
+    const averageSongDuration = 3.5; // minutes
+    const songsPerArtist = 3;
+    const estimatedDuration = selectedArtists.length * songsPerArtist * averageSongDuration;
+    setEstimatedPlaylistDuration(estimatedDuration);
+  }, [selectedArtists]);
+  
   const toggleArtistSelection = (artistName: string) => {
     setSelectedArtists(prev => {
       if (prev.includes(artistName)) {
@@ -117,9 +127,10 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
       const userProfile = await spotifyApi.getUserProfile();
       
       // Create a new playlist
-      const festivalName = festival.replace(/([a-z])([A-Z])/g, '$1 $2');
-      const playlistName = `Roadtrip Radio: ${festivalName} from ${startLocation}`;
-      const playlistDescription = `A playlist for my road trip to ${festivalName} from ${startLocation}`;
+      const festivalName = festival?.replace(/([a-z])([A-Z])/g, '$1 $2') || '';
+      const tripDurationText = tripDuration ? `${tripDuration} min` : '';
+      const playlistName = `Roadtrip Radio: ${festivalName} from ${startLocation} (${tripDurationText})`;
+      const playlistDescription = `A ${tripDurationText} playlist for my road trip to ${festivalName} from ${startLocation}`;
       
       const playlist = await spotifyApi.createPlaylist(
         userProfile.id,
@@ -144,10 +155,38 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
       
       // Collect track URIs from the top tracks (up to 3 per artist)
       let trackUris: string[] = [];
+      let totalDuration = 0;
+      const targetDuration = tripDuration * 60 * 1000; // convert minutes to milliseconds
+      
+      // First pass: collect all potential tracks
+      const allTracks: Array<{uri: string, duration_ms: number}> = [];
       for (const artistId in topTracksMap) {
         const artistTracks = topTracksMap[artistId];
-        const artistTrackUris = artistTracks.slice(0, 3).map(track => track.uri);
-        trackUris.push(...artistTrackUris);
+        artistTracks.slice(0, 5).forEach(track => {
+          if (track.duration_ms) { // Make sure duration exists
+            allTracks.push({
+              uri: track.uri,
+              duration_ms: track.duration_ms
+            });
+          }
+        });
+      }
+      
+      // Sort tracks by duration (shortest first) to help with optimal packing
+      allTracks.sort((a, b) => a.duration_ms - b.duration_ms);
+      
+      // Use a simple greedy algorithm to fill the playlist to match the trip duration
+      for (const track of allTracks) {
+        if (totalDuration + track.duration_ms <= targetDuration) {
+          trackUris.push(track.uri);
+          totalDuration += track.duration_ms;
+        } else {
+          // If we're already close enough to the target, stop adding tracks
+          if (totalDuration > targetDuration * 0.9) {
+            break;
+          }
+          // Otherwise, continue trying to add smaller tracks
+        }
       }
       
       // Add tracks to playlist
@@ -159,8 +198,9 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
       setPlaylistUrl(playlist.external_urls.spotify);
       setPlaylistCreated(true);
       
+      const finalDurationMinutes = Math.round(totalDuration / (60 * 1000));
       toast.success("Playlist created!", {
-        description: "Your road trip playlist is ready on Spotify"
+        description: `Your ${finalDurationMinutes}-minute road trip playlist is ready on Spotify`
       });
       
     } catch (error) {
@@ -374,12 +414,24 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival }: PlaylistGen
             <h3 className="text-xl font-medium mb-4">Playlist options</h3>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span>Include top tracks</span>
-                <span className="text-sm bg-black/10 px-3 py-1 rounded-full">Enabled</span>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span>Trip duration</span>
+                </div>
+                <div className="text-sm bg-black/10 px-3 py-1 rounded-full flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  <span>{tripDuration} minutes</span>
+                </div>
               </div>
               <div className="flex items-center justify-between">
-                <span>Enable shuffle</span>
-                <span className="text-sm bg-black/10 px-3 py-1 rounded-full">Enabled</span>
+                <div className="flex items-center gap-2">
+                  <Music className="h-4 w-4 text-muted-foreground" />
+                  <span>Estimated playlist duration</span>
+                </div>
+                <div className="text-sm bg-black/10 px-3 py-1 rounded-full flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  <span>{Math.round(estimatedPlaylistDuration)} minutes</span>
+                </div>
               </div>
               <div className="flex items-center justify-between">
                 <span>Playlist visibility</span>

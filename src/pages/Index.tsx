@@ -11,6 +11,7 @@ const Index = () => {
     startLocation: string;
     endLocation: string;
     festival: string;
+    tripDuration: number; // in minutes
   } | null>(null);
   
   const [artistLocations, setArtistLocations] = useState<any[] | null>(null);
@@ -19,6 +20,7 @@ const Index = () => {
     startLocation: string;
     endLocation: string;
     festival: string;
+    tripDuration: number;
   }) => {
     setRoute(data);
     
@@ -35,7 +37,7 @@ const Index = () => {
         <div className="text-center max-w-3xl mx-auto mb-12">
           <div className="inline-flex items-center justify-center gap-2 mb-4 bg-muted/50 px-4 py-2 rounded-full text-sm">
             <Music size={16} className="text-festival-pink" />
-            <span>Discover artists along your journey</span>
+            <span>Perfect length playlists for your journey</span>
           </div>
           <h1 className="text-4xl sm:text-6xl font-bold mb-4 text-gradient leading-tight">
             Roadtrip Radio
@@ -82,6 +84,7 @@ const Index = () => {
               startLocation={route?.startLocation}
               endLocation={route?.endLocation}
               festival={route?.festival}
+              tripDuration={route?.tripDuration}
             />
           </div>
         </div>
