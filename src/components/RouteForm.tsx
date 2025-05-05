@@ -129,9 +129,6 @@ const RouteForm = ({ onSubmit }: RouteFormProps) => {
                 <p className="text-xs text-center mt-1 text-muted-foreground">Minutes</p>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground italic">
-              Calculate your journey time (by car, train, etc.) to the festival
-            </p>
           </div>
           
           <Button 
