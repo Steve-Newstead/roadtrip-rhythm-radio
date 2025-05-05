@@ -26,7 +26,7 @@ export interface SpotifyTrack {
 
 export interface ArtistWithDetails {
   name: string;
-  id: string;
+  id: string | null;
   imageUrl: string | null;
   spotifyId: string | null;
   topTrack: string | null;
@@ -132,7 +132,6 @@ class SpotifyAPI {
     });
 
     try {
-//      const result = await this.fetchWithAuth(`/search?q="London Grammar"&type=artist&limit=1`);
       const result = await this.fetchWithAuth(`/search?q="${encodeURIComponent(query)}"&type=artist&limit=1`);
       console.log("Search result url:", `/search?${params}`);
       var resultsArtistSearch =  result.artists.items;
@@ -157,10 +156,11 @@ class SpotifyAPI {
     }
     
     try {
-      // Collect all Spotify IDs
+      // Collect all Spotify IDs - only use valid non-null IDs
       const spotifyIds = artists
         .filter(artist => artist.spotify_id)
-        .map(artist => artist.spotify_id) as string[];
+        .map(artist => artist.spotify_id)
+        .filter(Boolean) as string[];
       
       // Map to keep track of Spotify ID to original artist name
       const idToNameMap = new Map<string, string>();
@@ -176,7 +176,9 @@ class SpotifyAPI {
       // Create a map of Spotify ID to artist details
       const spotifyArtistsMap = new Map<string, SpotifyArtist>();
       spotifyArtists.forEach(artist => {
-        spotifyArtistsMap.set(artist.id, artist);
+        if (artist && artist.id) {  // Make sure artist and artist.id exist
+          spotifyArtistsMap.set(artist.id, artist);
+        }
       });
       
       // Get top tracks for artists with valid Spotify IDs
