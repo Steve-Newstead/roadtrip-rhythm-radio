@@ -2,9 +2,8 @@
 import { useState } from "react";
 import Header from "@/components/Header";
 import RouteForm from "@/components/RouteForm";
-import Map from "@/components/Map";
 import PlaylistGenerator from "@/components/PlaylistGenerator";
-import { MapPin, Music } from "lucide-react";
+import { MapPin, Music, Clock } from "lucide-react";
 
 const Index = () => {
   const [route, setRoute] = useState<{
@@ -14,8 +13,6 @@ const Index = () => {
     tripDuration: number; // in minutes
   } | null>(null);
   
-  const [artistLocations, setArtistLocations] = useState<any[] | null>(null);
-  
   const handleFormSubmit = (data: {
     startLocation: string;
     endLocation: string;
@@ -23,9 +20,6 @@ const Index = () => {
     tripDuration: number;
   }) => {
     setRoute(data);
-    
-    // Clear any previous artist locations when selecting a new festival
-    setArtistLocations([]);
   };
 
   return (
@@ -61,24 +55,56 @@ const Index = () => {
                     <p className="font-medium">{route.startLocation}</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-2">
+                <div className="flex items-start gap-2 mb-2">
                   <Music size={16} className="mt-1 text-festival-blue" />
                   <div>
                     <span className="text-xs text-muted-foreground">Destination</span>
                     <p className="font-medium">{route.endLocation}</p>
                   </div>
                 </div>
+                <div className="flex items-start gap-2">
+                  <Clock size={16} className="mt-1 text-festival-purple" />
+                  <div>
+                    <span className="text-xs text-muted-foreground">Estimated travel time</span>
+                    <p className="font-medium">
+                      {Math.floor(route.tripDuration / 60)} hours {route.tripDuration % 60} minutes
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Map and Results */}
+          {/* Results */}
           <div className="lg:col-span-2 space-y-8">
-            <Map 
-              startLocation={route?.startLocation} 
-              endLocation={route?.endLocation}
-              artistLocations={artistLocations || undefined}
-            />
+            {route && (
+              <div className="p-6 bg-muted/20 rounded-3xl">
+                <div className="flex items-center gap-2 mb-4">
+                  <Clock size={20} className="text-festival-purple" />
+                  <h2 className="text-xl font-semibold">Journey Details</h2>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Starting point:</span>
+                    <span className="font-medium">{route.startLocation}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Destination:</span>
+                    <span className="font-medium">{route.endLocation}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Estimated travel time:</span>
+                    <span className="font-medium bg-festival-purple/10 text-festival-purple px-3 py-1 rounded-full">
+                      {Math.floor(route.tripDuration / 60)} hours {route.tripDuration % 60} minutes
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Total playlist duration needed:</span>
+                    <span className="font-medium">{route.tripDuration} minutes</span>
+                  </div>
+                </div>
+              </div>
+            )}
             
             <PlaylistGenerator 
               startLocation={route?.startLocation}

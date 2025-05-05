@@ -28,14 +28,12 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival, tripDuration 
   const { user, spotifyAuth } = useAuth();
   const navigate = useNavigate();
   
-  // Set the Spotify access token when it changes
   useEffect(() => {
     if (spotifyAuth.accessToken) {
       spotifyApi.setAccessToken(spotifyAuth.accessToken);
     }
   }, [spotifyAuth.accessToken]);
   
-  // Load artists when festival changes
   useEffect(() => {
     const fetchArtistDetails = async () => {
       if (!festival) return;
@@ -80,14 +78,29 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival, tripDuration 
     fetchArtistDetails();
   }, [festival, spotifyAuth.accessToken]);
   
-  // Calculate estimated playlist duration when selected artists change
   useEffect(() => {
-    // For now, we'll use a simple estimation: 3-4 minutes per song, 3 songs per artist
+    if (selectedArtists.length === 0) {
+      setEstimatedPlaylistDuration(0);
+      return;
+    }
+    
+    // For a more accurate estimation considering the actual trip duration
     const averageSongDuration = 3.5; // minutes
-    const songsPerArtist = 3;
-    const estimatedDuration = selectedArtists.length * songsPerArtist * averageSongDuration;
+    const targetDuration = tripDuration || 120; // default to 120 if not provided
+    
+    // Calculate how many songs we need based on target duration
+    const songsNeeded = Math.ceil(targetDuration / averageSongDuration);
+    
+    // Distribute songs evenly among selected artists (max 5 per artist)
+    const maxSongsPerArtist = 5;
+    const estimatedSongsPerArtist = Math.min(
+      Math.ceil(songsNeeded / selectedArtists.length),
+      maxSongsPerArtist
+    );
+    
+    const estimatedDuration = selectedArtists.length * estimatedSongsPerArtist * averageSongDuration;
     setEstimatedPlaylistDuration(estimatedDuration);
-  }, [selectedArtists]);
+  }, [selectedArtists, tripDuration]);
   
   const toggleArtistSelection = (artistName: string) => {
     setSelectedArtists(prev => {
@@ -128,7 +141,9 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival, tripDuration 
       
       // Create a new playlist
       const festivalName = festival?.replace(/([a-z])([A-Z])/g, '$1 $2') || '';
-      const tripDurationText = tripDuration ? `${tripDuration} min` : '';
+      const tripDurationText = tripDuration ? 
+        `${Math.floor(tripDuration / 60)}h${tripDuration % 60}m` : 
+        '';
       const playlistName = `Roadtrip Radio: ${festivalName} from ${startLocation} (${tripDurationText})`;
       const playlistDescription = `A ${tripDurationText} playlist for my road trip to ${festivalName} from ${startLocation}`;
       
@@ -222,7 +237,6 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival, tripDuration 
     (count, artists) => count + artists.length, 0
   );
   
-  // No artists found for this festival
   if (!isLoadingArtists && totalArtists === 0) {
     return (
       <div className="w-full mt-6 p-8 rounded-3xl bg-muted/30 text-center">
@@ -266,7 +280,6 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival, tripDuration 
     );
   };
 
-  // Warning for unauthenticated users
   const renderAuthWarning = () => {
     if (!needsAuthentication) return null;
     
@@ -297,7 +310,9 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival, tripDuration 
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Roadtrip Radio</h2>
-          <p className="text-muted-foreground">Create a playlist with artists playing at {endLocation}</p>
+          <p className="text-muted-foreground">
+            Create a {tripDuration} minute playlist for your journey to {endLocation}
+          </p>
         </div>
         
         {playlistCreated && playlistUrl ? (
@@ -341,7 +356,42 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival, tripDuration 
         )}
       </div>
       
-      {/* Display warning for unauthenticated users */}
+      {tripDuration && selectedArtists.length > 0 && (
+        <div className="mb-6 p-4 rounded-lg bg-muted/40">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Playlist Duration Match</span>
+            </div>
+            <div className={`text-sm px-3 py-1 rounded-full ${
+              Math.abs(estimatedPlaylistDuration - tripDuration) < tripDuration * 0.1
+                ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+            }`}>
+              {Math.abs(estimatedPlaylistDuration - tripDuration) < tripDuration * 0.1
+                ? "Good match!"
+                : "Needs adjustment"}
+            </div>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+            <div 
+              className={`h-2.5 rounded-full ${
+                Math.abs(estimatedPlaylistDuration - tripDuration) < tripDuration * 0.1
+                  ? "bg-green-500"
+                  : estimatedPlaylistDuration < tripDuration 
+                    ? "bg-amber-500" 
+                    : "bg-red-500"
+              }`}
+              style={{ width: `${Math.min(estimatedPlaylistDuration / tripDuration * 100, 100)}%` }}
+            ></div>
+          </div>
+          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+            <span>Current: {Math.round(estimatedPlaylistDuration)} min</span>
+            <span>Target: {tripDuration} min</span>
+          </div>
+        </div>
+      )}
+      
       {renderAuthWarning()}
       
       <Tabs defaultValue="artists" className="w-full">
@@ -368,7 +418,6 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival, tripDuration 
             </div>
           ) : (
             <div className="space-y-8">
-              {/* First display main stages */}
               {allStages
                 .filter(stageName => {
                   const stageData = getOrganizedArtistsByFestival(festival).find(s => s.stageName === stageName);
@@ -385,7 +434,6 @@ const PlaylistGenerator = ({ startLocation, endLocation, festival, tripDuration 
                   />
                 ))}
               
-              {/* Then display other stages */}
               {allStages
                 .filter(stageName => {
                   const stageData = getOrganizedArtistsByFestival(festival).find(s => s.stageName === stageName);

@@ -20,7 +20,8 @@ interface RouteFormProps {
 const RouteForm = ({ onSubmit }: RouteFormProps) => {
   const [startLocation, setStartLocation] = useState("");
   const [festival, setFestival] = useState("");
-  const [tripDuration, setTripDuration] = useState("120"); // Default to 2 hours (120 min)
+  const [tripDurationHours, setTripDurationHours] = useState("2");
+  const [tripDurationMinutes, setTripDurationMinutes] = useState("0");
   const { toast } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -45,11 +46,14 @@ const RouteForm = ({ onSubmit }: RouteFormProps) => {
     }
     
     // Parse trip duration as number
-    const duration = parseInt(tripDuration, 10);
-    if (isNaN(duration) || duration <= 0) {
+    const hours = parseInt(tripDurationHours, 10) || 0;
+    const minutes = parseInt(tripDurationMinutes, 10) || 0;
+    const totalMinutes = (hours * 60) + minutes;
+    
+    if (totalMinutes <= 0) {
       toast({
         title: "Invalid trip duration",
-        description: "Please enter a valid trip duration in minutes",
+        description: "Please enter a valid trip duration",
         variant: "destructive"
       });
       return;
@@ -64,7 +68,7 @@ const RouteForm = ({ onSubmit }: RouteFormProps) => {
         startLocation,
         endLocation: selectedFestival.festival_name,
         festival,
-        tripDuration: duration
+        tripDuration: totalMinutes
       });
     }
   };
@@ -96,17 +100,35 @@ const RouteForm = ({ onSubmit }: RouteFormProps) => {
           <div className="space-y-2">
             <label htmlFor="duration" className="text-sm font-medium flex items-center gap-2">
               <Clock size={16} className="text-festival-pink" />
-              <span>Trip Duration (minutes)</span>
+              <span>Trip Duration</span>
             </label>
-            <Input
-              id="duration"
-              type="number"
-              placeholder="Enter trip duration in minutes"
-              value={tripDuration}
-              onChange={(e) => setTripDuration(e.target.value)}
-              min="1"
-              className="rounded-full border-2 focus-visible:border-festival-purple focus-visible:ring-festival-purple"
-            />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Input
+                  id="durationHours"
+                  type="number"
+                  placeholder="Hours"
+                  value={tripDurationHours}
+                  onChange={(e) => setTripDurationHours(e.target.value)}
+                  min="0"
+                  className="rounded-full border-2 focus-visible:border-festival-purple focus-visible:ring-festival-purple"
+                />
+                <p className="text-xs text-center mt-1 text-muted-foreground">Hours</p>
+              </div>
+              <div>
+                <Input
+                  id="durationMinutes"
+                  type="number"
+                  placeholder="Minutes"
+                  value={tripDurationMinutes}
+                  onChange={(e) => setTripDurationMinutes(e.target.value)}
+                  min="0"
+                  max="59"
+                  className="rounded-full border-2 focus-visible:border-festival-purple focus-visible:ring-festival-purple"
+                />
+                <p className="text-xs text-center mt-1 text-muted-foreground">Minutes</p>
+              </div>
+            </div>
           </div>
           
           <div className="flex items-center justify-center my-2">
